@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# 使い方を標準エラー出力に出力する
+function usage() {
+    echo "usage: \$ ./labtimer -t 全体秒数 [-b 途中経過秒数（複数化）]" 2>&1
+    echo "  ex) 制限時間60秒, 途中 30 秒 と 40秒 のときに通知" 2>&1
+    echo "  \$ ./labtimer -t 60 -b 30 40" 2>&1
+}
+
+echo "[start] labtimer"
+
+# 初期化
+remaining="30"
+bells="15 10"
+last_music_path="./out.mp3"
+
+# 起動引数処理
+while getopts "t:b:" flag; do
+  case $flag in
+    \?) OPT_ERROR=1; break;;
+    t) remaining="$OPTARG";;
+    b) bells="$OPTARG";;
+    l) last_music_path="$OPTARG";;
+  esac
+done
+
+shift $(( $OPTIND - 1 ))
+
+# 起動引数エラー処理
+# - 不正な引数を指定したとき
+if [ $OPT_ERROR ]; then
+    usage
+    exit 1
+fi
+
+# 設定情報表示
+echo "=== CURRENT SETTINGS ==="
+echo "設定時間(s): ${remaining}"
+echo "通知時間(s): ${bells}"
+echo "最終告知音楽(s): ${last_music_path}"
+echo "==="
+
+# 実行
+while [ $remaining -gt 0 ]
+do
+    # 10 秒ごとに標準出力に表示
+    if [ $(( $remaining % 10 )) -eq "0" ]
+    then 
+        echo "残り " $remaining
+    fi
+    
+    
+    # ベルに含まれている秒数のときは通知
+    for bell in $bells
+    do
+        if [ $remaining -eq $bell ]
+        then
+            echo say "$remaining seconds " &
+        fi
+    done
+    
+    # 残り 3 秒以下のときはカウントダウン
+    if [ $remaining -le 3 ]
+    then
+        echo say $remaining &
+    fi
+    
+    sleep 1
+    
+    # デクリメント
+    remaining=$((remaining - 1))
+done
+
+# 最後に効果音を再生
+afplay $last_music_path
